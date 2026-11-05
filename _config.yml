@@ -1,7 +1,19 @@
 title: OpenRevs
 description: One-line description of the project goes here.
+url: https://openrevs.org
 
-# Every page uses _layouts/default.html unless it says otherwise.
+# Theme: Just the Docs (https://just-the-docs.com), pinned to a release.
+remote_theme: just-the-docs/just-the-docs@v0.12.0
+plugins:
+  - jekyll-remote-theme
+
+search_enabled: true
+color_scheme: dark
+
+# Links shown at the top right. Point this at your main GitHub repo or org.
+# aux_links:
+#   GitHub: https://github.com/OWNER
+
 defaults:
   - scope:
       path: ""

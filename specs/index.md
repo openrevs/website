@@ -1,5 +1,10 @@
 ---
 title: Specifications
+nav_order: 3
+has_children: true
+permalink: /specs/
 ---
 
-- [Example spec](example/)
+# Specifications
+
+The project's specifications:
