@@ -1,0 +1,12 @@
+title: OpenRevs
+description: One-line description of the project goes here.
+
+# Every page uses _layouts/default.html unless it says otherwise.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+exclude:
+  - README.md
