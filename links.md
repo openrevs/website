@@ -1,7 +1,7 @@
 ---
-title: Why
-nav_order: 2
-permalink: /why/
+title: Links
+nav_order: 20
+permalink: /links/
 ---
 
 # Links
