@@ -8,7 +8,7 @@ plugins:
   - jekyll-remote-theme
 
 search_enabled: true
-color_scheme: dark
+#color_scheme: dark
 
 # Links shown at the top right. Point this at your main GitHub repo or org.
 # aux_links:
