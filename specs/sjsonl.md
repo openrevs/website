@@ -107,7 +107,7 @@ null
 
 ### Document hash
 
-A document's hash is the first 16 bytes of the SHA256 of the signing message from step 3 above, encoded as lowercase hex. It identifies a specific line set and is used as the `base` and `target` references in patches and for general purpose document identification.
+A document's hash is the SHA256 of the signing message from step 3 above, encoded as lowercase hex. It identifies a specific line set and is used as the `base` and `target` references in patches and for general purpose document identification.
 
 ## Patching
 
@@ -119,10 +119,10 @@ A patch file consists of:
   - `base` — the document hash of the base document
   - `target` — the document hash of the patched (target) document
   - `rm` — hash prefixes of the lines to remove
-  - `key` and `sig` — the signature data for the **patched** (target) document
+  - `key` and `sig` — the signature data for the **patched** (target) document. `key` and `sig` are both **optional**.
 - The lines to add, one per line, verbatim
 
-The `base` and `target` hashes make a patch self-describing as an edge in a version graph: consumers can select the right patch for a document they hold, and chain patches (one patch's `target` feeding the next patch's `base`) without applying them. The `target` hash is advisory — the signature remains the authority on the patched result, and a `target` that disagrees with it is exposed by signature verification at apply time.
+The optionality of signature data is to allow using the same diff/patch structure within internal and trusted environments.
 
 Example — a patch that changes Alice's age in the document above:
 
