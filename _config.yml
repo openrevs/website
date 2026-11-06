@@ -22,3 +22,5 @@ defaults:
 
 exclude:
   - README.md
+  - Dockerfile
+  - compose.yaml

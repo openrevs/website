@@ -5,6 +5,25 @@ GitHub builds it with Jekyll on every push, so there's nothing to install.
 
 Theme: [Just the Docs](https://just-the-docs.com), set in `_config.yml`.
 
+## Local preview
+
+Only Docker is needed — no Ruby, gems, or version managers on the host.
+
+```sh
+docker compose up        # then open http://localhost:4000
+```
+
+Edits are picked up automatically and the browser reloads. Stop with ctrl-c
+(or `docker compose down` if started with `-d`).
+
+The first run builds the image (a few minutes); later runs start in seconds.
+After changing the `Dockerfile`, rebuild with `docker compose up --build`.
+
+The image installs the `github-pages` gem, which pins the same Jekyll and
+plugin versions GitHub Pages uses, so the preview matches the live site. Output
+goes to `_site/` (gitignored). The theme is fetched from GitHub on each build,
+so a network connection is required.
+
 ## Adding pages
 
 Create a `.md` file with front matter, then start the body with a `# Heading`:
