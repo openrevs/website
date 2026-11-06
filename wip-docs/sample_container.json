@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "user": {
+    "publicKey": "abc123...",
+    "email": "",
+    "website": ""
+  },
+  "reviews": {
+    "movies": {
+      "minRating": 0,
+      "maxRating": 100,
+      "reviews": [
+        {
+          "description": {
+            "title": "Pulp Fiction",
+            "year": 1994,
+            "imdbId": "tt0110912",
+            "tmdbId": "680-pulp-fiction",
+            "wikipediaId": "Pulp_Fiction"
+          },
+          "reviews": [
+            {
+              "date": "1997-07-07",
+              "rating": 91,
+              "comment": "Great"
+            },
+            {
+              "date": "2015-07-07",
+              "dating": 71,
+              "comment": "Great"
+            }
+          ]
+        },
+        {
+          "description": {
+            "title": "Star Wars: Episode IV - A New Hope",
+            "year": 1977,
+            "imdbId": "tt0076759"
+          },
+          "reviews": [
+            {
+              "rating": 100,
+              "comment": "Great"
+            }
+          ]
+        }
+      ]
+    },
+    "podcasts": {
+    },
+    "books": {
+    }
+  }
+}
