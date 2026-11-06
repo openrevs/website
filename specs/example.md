@@ -12,3 +12,16 @@ permalink: /specs/example/
 ## Overview
 
 Spec text goes here.
+
+## Flow
+
+```mermaid
+sequenceDiagram
+    participant Author
+    participant Reviewer
+    participant Log
+    Author->>Log: Append revision
+    Reviewer->>Log: Read revision
+    Reviewer->>Log: Append signed review
+    Log-->>Author: Review recorded
+```

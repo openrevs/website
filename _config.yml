@@ -10,6 +10,10 @@ plugins:
 search_enabled: true
 #color_scheme: dark
 
+# Enable Mermaid diagrams (```mermaid code blocks).
+mermaid:
+  version: "11.4.1"
+
 # Links shown at the top right. Point this at your main GitHub repo or org.
 # aux_links:
 #   GitHub: https://github.com/OWNER
