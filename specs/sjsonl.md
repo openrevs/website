@@ -127,7 +127,7 @@ The optionality of signature data is to allow using the same diff/patch structur
 Example — a patch that changes Alice's age in the document above:
 
 ```json
-{"sjsonl":"patch","version":"0.1","key":"1ddb79531fac6085eb572eb63c9ed3cd84a85e08c08f0a06f283b07e56e041a8","sig":"c913a7f3e48bbc5c8c50e6446c1292e9d96ec04d776c45404324ee3e0fa999a606d72bfce25125d733c760379d80b0c0e7a710dc53c1ef30af1a164610a24505","base":"20728fa9354b71b9b05f34b3e7bf8f81","target":"775a21e81092bede93eb474903b3a8a7","rm":["7a"]}
+{"sjsonl":"patch","version":"0.1","key":"1ddb79531fac6085eb572eb63c9ed3cd84a85e08c08f0a06f283b07e56e041a8","sig":"c913a7f3e48bbc5c8c50e6446c1292e9d96ec04d776c45404324ee3e0fa999a606d72bfce25125d733c760379d80b0c0e7a710dc53c1ef30af1a164610a24505","base":"20728fa9354b71b9b05f34b3e7bf8f812a00984bc3ee9446069aa54a65b2886e","target":"775a21e81092bede93eb474903b3a8a7cf5d557d38676cc1fc4906e4c2cde879","rm":["7a"]}
 {"name": "Alice", "age": 50}
 ```
 
