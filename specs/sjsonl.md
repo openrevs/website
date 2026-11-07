@@ -19,7 +19,7 @@ SJSONL structures documents as [JSON Lines](https://jsonlines.org) and treats ea
 
 - Documents can be signed and verified against a public key
 - Documents can be diffed and patched, including by third parties who cannot sign
-- Familiar formats and encodings (JSONL, SHA256, Ed25519, hex)
+- Familiar formats and encodings (JSONL, SHA256, Ed25519, hex, base64)
 - Simple design and easy implementation
 
 ### Rationale
@@ -67,7 +67,9 @@ null
 
 Each line's hash is the SHA256 of the line's bytes with leading and trailing whitespace removed.
 
-All binary values in SJSONL — hashes, keys, and signatures — are encoded as lowercase hex wherever they appear as strings.
+Hashes are encoded as lowercase hex wherever they appear as strings.
+
+Keys and signatures are encoded as standard base64 ([RFC 4648 §4](https://www.rfc-editor.org/rfc/rfc4648#section-4)) with padding. Every value has exactly one valid encoding: encoders MUST produce the canonical form, and decoders MUST reject anything else, including non-zero trailing bits, missing or extra padding, whitespace, and the URL-safe alphabet.
 
 ## Header line
 
@@ -77,8 +79,8 @@ The first line of a signed document or patch file MUST be a header line: a JSON 
 |-------|-----------|-------------|
 | `sjsonl` | both | Marker and file type: `"doc"` for a signed document, `"patch"` for a patch |
 | `version` | both | Format version. Currently the only supported version is `"0.1"` |
-| `key` | both | The Ed25519 public key, encoded as lowercase hex |
-| `sig` | both | The Ed25519 signature, encoded as lowercase hex. For patches, this is the signature of the **patched** document, not of the patch itself |
+| `key` | both | The Ed25519 public key, encoded as base64 |
+| `sig` | both | The Ed25519 signature, encoded as base64. For patches, this is the signature of the **patched** document, not of the patch itself |
 | `base` | patch only | The document hash of the base document, identifying the expected source of the patch |
 | `target` | patch only | The document hash of the patched (target) document |
 | `rm` | patch only | A JSON array of hash prefixes identifying lines to remove from the base document |
@@ -97,7 +99,7 @@ The signature is computed as follows:
 A signed document is the input document plus the header line:
 
 ```json
-{"sjsonl":"doc","version":"0.1","key":"1ddb79531fac6085eb572eb63c9ed3cd84a85e08c08f0a06f283b07e56e041a8","sig":"e00dd056df7f0ef012290b97953a25a93e61255121396d8fc8d83ce2e71b5b97584029ba3f98af941fcdbcc79a552632b592bfc70a01e57fc3547a5e6232780b"}
+{"sjsonl":"doc","version":"0.1","key":"Hdt5Ux+sYIXrVy62PJ7TzYSoXgjAjwoG8oOwflbgQag=","sig":"4A3QVt9/DvASKQuXlTolqT5hJVEhOW2PyNg84ucbW5dYQCm6P5ivlB/NvMeaVSYytZK/xwoB5X/DVHpeYjJ4Cw=="}
 {"name": "Bob", "age": 30}
 null
 {"name": "Alice", "age": 42}
@@ -127,7 +129,7 @@ The optionality of signature data is to allow using the same diff/patch structur
 Example — a patch that changes Alice's age in the document above:
 
 ```json
-{"sjsonl":"patch","version":"0.1","key":"1ddb79531fac6085eb572eb63c9ed3cd84a85e08c08f0a06f283b07e56e041a8","sig":"c913a7f3e48bbc5c8c50e6446c1292e9d96ec04d776c45404324ee3e0fa999a606d72bfce25125d733c760379d80b0c0e7a710dc53c1ef30af1a164610a24505","base":"20728fa9354b71b9b05f34b3e7bf8f812a00984bc3ee9446069aa54a65b2886e","target":"775a21e81092bede93eb474903b3a8a7cf5d557d38676cc1fc4906e4c2cde879","rm":["7a"]}
+{"sjsonl":"patch","version":"0.1","key":"Hdt5Ux+sYIXrVy62PJ7TzYSoXgjAjwoG8oOwflbgQag=","sig":"yROn8+SLvFyMUOZEbBKS6dluwE13bEVAQyTuPg+pmaYG1yv84lEl1zPHYDedgLDA56cQ3FPB7zCvGhZGEKJFBQ==","base":"20728fa9354b71b9b05f34b3e7bf8f812a00984bc3ee9446069aa54a65b2886e","target":"775a21e81092bede93eb474903b3a8a7cf5d557d38676cc1fc4906e4c2cde879","rm":["7a"]}
 {"name": "Alice", "age": 50}
 ```
 
