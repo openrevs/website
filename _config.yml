@@ -28,3 +28,4 @@ exclude:
   - README.md
   - Dockerfile
   - compose.yaml
+  - specs/samples   # WIP sample data; not published
