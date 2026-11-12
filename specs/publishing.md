@@ -70,16 +70,19 @@ quotas are handled separately and are out of scope here.
 
 ## Storage
 
-Document blobs are content-addressed in object storage (local
-filesystem for now, behind a minimal Put/Get interface):
-
-    docs/<hash[:2]>/<hash>
-
-keyed by the sjsonl doc hash. This gives immutability, dedup of
+Document blobs are content-addressed, keyed by the sjsonl doc hash,
+behind a minimal Put/Get interface. This gives immutability, dedup of
 identical uploads, no user-controlled path segments, and makes the
 manifest `hash` field double as the storage key.
 
-The database tracks metadata only:
+The blobs live in the server's `revs.db`, in the same line-deduplicated
+tables the client uses for its corpora (`corpus_lines`, `corpus_docs`,
+as the `server` feed): each distinct line is stored once and a document
+is the list of its line ids. Documents are canonical with one record per
+line, so a new revision only costs its changed lines plus its header and
+signature.
+
+Alongside the blobs, the database tracks metadata:
 
 - `documents(userid, rev, hash, size, received_time)` — unique on
   `(userid, rev)`.

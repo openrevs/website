@@ -79,7 +79,7 @@ tui:
   data: ~/.revs              # the same collection as `ui`
 
 ui:
-  data: ~/.revs              # holds revs.db and servers/
+  data: ~/.revs              # holds revs.db
   listen: "127.0.0.1:1325"
   no-browser: false
 ```
@@ -92,6 +92,6 @@ Sections are independent: a key under `server:` never affects `tui`.
 `~/.revs` (see [UI]({{ site.baseurl }}/specs/ui/)); they can run at the same time. The server commands
 (`server`, `client`, `clientserver`) default to `~/.revs/server`: the
 server's `revs.db` would otherwise collide with the UI's, and the
-directory also holds the server's identity (`server.key`), its document
-store (`docs/`), and the published tree (`public/`). Any data directory
-is created on first run; back up the server one to keep its identity.
+directory also holds the server's identity (`server.key`) and the
+published tree (`public/`); uploaded documents are kept in `revs.db`.
+Any data directory is created on first run; back up the server one to keep its identity.

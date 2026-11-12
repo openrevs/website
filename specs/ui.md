@@ -37,15 +37,18 @@ goes back. Both can run at once on the same data directory.
 
 ## Data
 
-Everything lives in the data directory (`--data`, default `~/.revs`):
+Everything lives in the data directory (`--data`, default `~/.revs`),
+in one SQLite database, `revs.db`: movies, viewings, settings
+(including your private key), servers, your version history, and for
+each server the verified corpus pulled from it, its sync state, and an
+index of its reviews.
 
-    revs.db           movies, viewings, settings (including your private key), servers
-    servers/<id>.db   one per server: the verified corpus pulled from it,
-                      sync state, and an index of its reviews
-
-`revs.db` holds your private key, so it is created mode 0600. The
-per-server databases are caches and can be rebuilt by pulling again.
-"Discard pulled data" on a server page deletes its file.
+`revs.db` holds your private key, so it is created mode 0600. Pulled
+documents are stored line by line, so a new revision only adds the
+lines that changed, and a document published on several servers is
+stored once. What is pulled from a server is a cache and can be
+rebuilt by pulling again: "Discard pulled data" on a server page drops
+it, keeping whatever another server also holds.
 
 ## Publishing
 
