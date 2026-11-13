@@ -82,7 +82,7 @@ permalink: /specs/federatings/
 - Asymmetric authentication is done using Adam Langley’s ed25519 library. Every user will generate a public/private key pair.
 - Serialize object to JSON
 - Remove trailing whitespace and convert to UNIX line endings "\n"
-- JSON must have a “user_id” field containing the users public key in ascii hex format, lower case, without any delimeters
+- JSON must have a “user_id” field containing the user's ID (see [Keys and user IDs]({{ site.baseurl }}/specs/security/#keys-and-user-ids))
 - Remove last paren ‘}’ from string
 - Calculate ed25519 signature of this string
 - Append a base64 version of the signature to the string like: ,"signature":""}

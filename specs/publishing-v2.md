@@ -13,10 +13,10 @@ files and described by a single `index.json`.
 
 ## Channels
 
-A server publishes to one or more **channels**. Channels may, and
-usually will, contain overlapping documents, and a server may define
-channels for whatever purpose it chooses. Each channel has its own
-epoch counter.
+A server publishes to one or more **channels**. Channels are
+independent namespaces in all respects, and each has its own epoch
+counter. They may, and usually will, contain overlapping documents, and
+a server may define channels for whatever purpose it chooses.
 
 Two channel names are predefined:
 
@@ -34,11 +34,18 @@ Two channel names are predefined:
 
 ## Trust
 
-Documents are the unit of trust: each one is signed by its author, and
-consumers verify every document they apply. Publications themselves
-(the index, snapshots and patches) are not signed. A server or
-intermediary can withhold or delay documents, but it cannot forge or
-alter one undetected.
+Documents are the primary unit of trust: each one is signed by its
+author, and consumers verify every document they apply.
+
+Each snapshot and patch also has a [manifest](#manifests) signed with
+the server's key. The server ID, derived from that key, is how clients
+identify and track a server, not its URL. For now the manifest is mainly
+an efficiency tool: it tells clients which documents a publication holds
+and whether they need to download it. Since every document is signed
+individually, there is little else in a publication to verify. That may
+change, and server signatures may matter more, if the project moves to
+post-quantum signatures (see
+[Post-quantum]({{ site.baseurl }}/specs/post-quantum/)).
 
 ## File layout
 
@@ -48,7 +55,9 @@ All files are static and served as-is:
       index.json
       <channel>/
         snapshot-<epoch>_<part>.tar.gz
+        snapshot-manifest-<epoch>.sjsonl.gz
         patch-<start>-<end>_<part>.tar.gz
+        patch-manifest-<start>-<end>.sjsonl.gz
 
 Example:
 
@@ -57,15 +66,23 @@ Example:
       main/
         snapshot-210_1.tar.gz
         snapshot-210_2.tar.gz
+        snapshot-manifest-210.sjsonl.gz
         snapshot-230_1.tar.gz
         snapshot-230_2.tar.gz
+        snapshot-manifest-230.sjsonl.gz
         patch-210-211_1.tar.gz
+        patch-manifest-210-211.sjsonl.gz
         patch-211-212_1.tar.gz
+        patch-manifest-211-212.sjsonl.gz
         patch-212-213_1.tar.gz
+        patch-manifest-212-213.sjsonl.gz
         patch-213-214_1.tar.gz
+        patch-manifest-213-214.sjsonl.gz
         patch-214-215_1.tar.gz
+        patch-manifest-214-215.sjsonl.gz
         patch-210-215_1.tar.gz
         patch-210-215_2.tar.gz
+        patch-manifest-210-215.sjsonl.gz
       direct/
         ...
 
@@ -75,9 +92,18 @@ Example:
 in it. `created` at the top level is when the index was generated. Each
 channel's `epoch` is its current epoch.
 
+`server_key` is the server's Ed25519 public key and `server_id` is the
+ID derived from it, both following the same rules as user keys and IDs
+(see [Keys and user IDs]({{ site.baseurl }}/specs/security/#keys-and-user-ids)).
+A client can check that the two match. The index itself
+is unsigned. Clients trust `server_key` on first use and pin it after
+that.
+
 ```json
 {
   "created": "2026-11-12T21:57:19Z",
+  "server_id": "...",
+  "server_key": "...",
   "channels": {
     "main": {
       "epoch": 230,
@@ -115,9 +141,8 @@ Snapshots and patches share one archive format:
 - Archives use ustar format and contain only regular files, with no
   directories, symlinks, absolute paths or `..` components. Consumers
   MUST reject any archive that contains anything else.
-- Every name in an entry ends in `.sjsonl`, except the reserved control
-  files described below. User IDs are lowercase hex, so a control file
-  name can never collide with a document entry.
+- Every entry is an sjsonl document or patch, with a name ending in
+  `.sjsonl`.
 
 Entry names are advisory: they let a consumer skip entries it already
 has without parsing them. The file contents are authoritative, and it is
@@ -178,19 +203,72 @@ Sample of `patch-210-211_1.tar.gz`:
 ### Removals
 
 A document can leave a channel, for example when it fails later
-vetting. A patch lists the users present at its start epoch but absent
-at its end epoch in a reserved control file in part 1:
-
-    removed.json
-
-```json
-["244eac011af63a9080fb074eeab519f04e2de2686035ae4911982d376d32beb8"]
-```
+vetting. Users present at a patch's start epoch but absent at its end
+epoch are listed as removals in the patch's
+[manifest](#manifests).
 
 Consumers following the channel drop those users from their view of the
 channel. A user removed and re-added within the same range appears as an
-ordinary entry, not in `removed.json`. Snapshots simply leave removed
-users out.
+ordinary entry, not as a removal. Snapshots simply leave removed users
+out.
+
+## Manifests
+
+Every snapshot and every patch has one manifest, covering all of its
+parts:
+
+    snapshot-manifest-<epoch>.sjsonl.gz
+    patch-manifest-<start>-<end>.sjsonl.gz
+
+A manifest is a gzipped sjsonl document signed with the server's key. A
+consumer reads it before downloading the archive, to decide whether it
+needs the archive at all and, if so, which parts.
+
+Sample of `patch-manifest-210-211.sjsonl.gz`, decompressed:
+
+```
+{"sjsonl":"doc","version":"0.1","key":"<server_key>","sig":"..."}
+{"manifest":"patch","server_id":"<server_id>","channel":"main","range":[210,211],"created":"2026-11-10T22:57:19Z","format":1}
+{"id":"244eac011af63a9080fb074eeab519f04e2de2686035ae4911982d376d32beb8","rev":432,"hash":"...","base_rev":430,"base_hash":"...","part":1}
+{"id":"c40b5005a10cbe5a3d105334f11db40fec185ca70a64670b705c482e84efef62","rev":23,"hash":"...","part":1}
+{"removed":"9f1a3c..."}
+```
+
+There are three kinds of line, and consumers tell them apart by their
+fields, not their position, since sjsonl sorts lines by hash:
+
+- **Metadata** (`manifest` field): exactly one per manifest. It states
+  what the manifest describes: `manifest` (`snapshot` or `patch`),
+  `server_id`, `channel`, `epoch` for snapshots or `range` for
+  patches, `created`, and `format` (format version). A consumer MUST
+  check that these match the path it fetched the manifest from, so that
+  a validly signed manifest can't be passed off as a different
+  publication.
+- **Entries** (`id` field): one per document in the archive. `rev` and
+  `hash` are the rev and sjsonl document hash of the resulting document,
+  and `part` is the archive part that holds it. Patch entries add
+  `base_rev` and `base_hash` when the entry is an sjsonl patch, and omit
+  them when it is a full document.
+- **Removals** (`removed` field, patches only): one per user removed
+  from the channel in the patch's range.
+
+Snapshot manifests list every document in the channel at that epoch.
+Patch manifests list every entry in the patch, plus its removals.
+
+Consumers use the manifest to:
+
+- **Skip downloads.** If the consumer already holds every listed `hash`,
+  it applies the removals and skips the archive. Otherwise it downloads
+  only the parts holding documents it lacks.
+- **Check applicability.** A patch entry applies only if the consumer
+  holds `base_hash`, which it can check before downloading anything.
+- **Verify entries.** Each document produced from the archive MUST have
+  the `hash` listed for it.
+- **Detect equivocation.** Two manifests, from the same server or from
+  different servers, that list the same `id` and `rev` with different
+  hashes show that the author signed two different documents with the
+  same rev.
+
 
 ## Patch retention and compaction
 
@@ -213,8 +291,8 @@ it loads the newest snapshot and continues from that snapshot's epoch.
 - An in-process ticker cuts each channel on a configurable interval
   (default hourly). A tick with no changes to a channel does nothing for
   that channel, so epochs are consecutive.
-- Order: write the archives to temporary paths and rename them into
-  place → commit the epoch to the database → regenerate `index.json`
+- Order: write the archives and manifest to temporary paths and rename
+  them into place → commit the epoch to the database → regenerate `index.json`
   (also written to a temporary path and renamed). A crash leaves either
   "epoch never happened" or "epoch exists but isn't in the index yet",
   and the next cut fixes both. No partially written epoch is ever
@@ -233,7 +311,8 @@ it loads the newest snapshot and continues from that snapshot's epoch.
 ## Out of scope
 
 - Abuse handling, quotas, rate limits.
-- Equivocation detection and fork resolution.
+- Fork resolution. Detecting equivocation through manifests is in
+  scope; resolving it is not.
 - User deletion across the network (removal from a channel is in
   scope).
 - Client-side consumption implementation.
