@@ -235,6 +235,38 @@ are deleted.
   design. (v1 need not delete anything; this defines what *may* be
   deleted.)
 
+## Server pull
+
+A server can pull from other servers (`--pull URL`, repeatable, every
+`--pull-interval`, default 15m, and once at startup). It reads each
+upstream exactly as a client does, through the `client` package: it pins
+the upstream's key on first use, verifies its manifests and every author
+signature, and syncs its corpus into a feed in the server's own `revs.db`
+(`upstream:<url>`). Feeds share line-deduplicated storage, so a document
+held both locally and upstream is stored once.
+
+After each sync, every changed document goes through the same checks as
+an upload and is accepted if its rev is newer than the user's latest
+accepted document. Accepted documents are republished in the next cut
+like any upload. A local document at the same or a higher rev always
+wins, so servers that pull from each other don't loop.
+
+Each accepted document records its **source** (`documents.source`):
+empty for a direct upload, otherwise the URL of the upstream it was
+pulled from. If a cluster of bad documents traces back to one upstream,
+remove it from the `pull` list to unsubscribe. Documents already
+accepted from it stay until they are superseded.
+
+Where it can, the server recovers on its own:
+
+- If an upstream's chain diverges (`DivergedError`), the server rebuilds
+  that feed from the upstream's newest snapshot.
+- If an upstream's key changes (`KeyChangedError`), the server logs it
+  and skips that upstream until an operator steps in.
+- On startup, and after a failed ingest, the next pull reconsiders every
+  document the feed holds, not only the changed ones, so documents that
+  were synced but never accepted aren't lost.
+
 ## Server identity
 
 The server ed25519 keypair is generated on first boot into the data

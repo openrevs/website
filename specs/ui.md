@@ -55,10 +55,19 @@ it, keeping whatever another server also holds.
 A push sends your whole collection as one signed document: one line
 per movie, with its viewings as reviews. Ids go under `refs` as
 `imdb`, `tmdb`, and `wikidata`. The client asserts the revision and
-only bumps it when content has changed. If another device pushed with
-the same key in the meantime, the push is reported as a conflict. You
-can then pull, merge the server's copy into your collection, and push
-again, or push anyway and overwrite the server's copy.
+only bumps it when content has changed.
+
+A push never silently replaces your collection on the server. If the
+server holds a copy you haven't seen (pushed from another device, or
+from this one before its data was wiped and your key imported again),
+the push merges that copy into your collection first, pulling it if
+needed, and then pushes the result. A copy you wrote, or already
+merged, isn't merged again, so what you deleted locally stays deleted.
+
+A copy the server hasn't published yet can't be merged, so that push
+is reported as a conflict, and pushing again stays one until the
+server's next epoch publishes it. You can wait and push again, or push
+anyway and overwrite the server's copy.
 
 Merging never deletes or overwrites anything. Movies match by
 Wikidata, IMDb, or TMDB id, otherwise by title and year. A viewing is

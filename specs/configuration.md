@@ -62,7 +62,13 @@ server:
   snapshot-every: 100        # --snapshot-every
   publish-on-upload: false   # --publish-on-upload: cut an epoch right after
                              # each accepted upload (for testing)
-  snapshot-chunk-size: 268435456  # --snapshot-chunk-size
+  part-size: 268435456       # --part-size: target size of each snapshot
+                             # and patch archive part
+  compact-every: [24, 168]   # --compact-every: epoch intervals at which
+                             # patches are compacted into aligned ranges
+  pull:                      # --pull URL (repeatable): upstream servers to
+    - https://revs.example.com  # pull documents from (see Publishing)
+  pull-interval: 15m         # --pull-interval: how often to pull them
 
 client:
   data: /var/revs            # default ~/.revs/server
@@ -92,6 +98,7 @@ Sections are independent: a key under `server:` never affects `tui`.
 `~/.revs` (see [UI]({{ site.baseurl }}/specs/ui/)); they can run at the same time. The server commands
 (`server`, `client`, `clientserver`) default to `~/.revs/server`: the
 server's `revs.db` would otherwise collide with the UI's, and the
-directory also holds the server's identity (`server.key`) and the
-published tree (`public/`); uploaded documents are kept in `revs.db`.
-Any data directory is created on first run; back up the server one to keep its identity.
+directory also holds the server's identity (`server.key`), which signs
+its manifests, and the published tree (`public/`); uploaded documents
+are kept in `revs.db`. Any data directory is created on first run; back
+up the server one to keep its identity.
