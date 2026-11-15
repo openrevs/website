@@ -52,6 +52,11 @@ The input document (what is being signed) is treated as a line **set**:
 - **Lines are unordered.** Documents with the same lines in a different order are equivalent, and line order in a signed document is not significant.
 - **Duplicate lines are not allowed.** For this test, a line's content has leading and trailing whitespace stripped.
 - **Every line must be valid JSON.** Empty lines are not allowed.
+- **Every line must be valid UTF-8**, as JSON Lines requires.
+
+A document with no lines is valid: it is the empty set.
+
+Throughout this specification, *whitespace* means JSON whitespace as defined by [RFC 8259 §2](https://www.rfc-editor.org/rfc/rfc8259#section-2): space (U+0020), horizontal tab (U+0009), line feed (U+000A), and carriage return (U+000D). Other characters, including other Unicode whitespace such as U+00A0 (no-break space), are not stripped. Because carriage return is whitespace, files with CRLF line endings are accepted.
 
 Those are the only input requirements beyond those of JSON Lines. The following is a valid input:
 
@@ -65,7 +70,7 @@ null
 
 ## Line hashes
 
-Each line's hash is the SHA256 of the line's bytes with leading and trailing whitespace removed.
+Each line's hash is the SHA256 of the line's bytes with leading and trailing whitespace (as defined in [Input](#input)) removed.
 
 Hashes are encoded as lowercase hex wherever they appear as strings.
 
@@ -73,12 +78,14 @@ Keys and signatures are encoded as standard base64 ([RFC 4648 §4](https://www.r
 
 ## Header line
 
-The first line of a signed document or patch file MUST be a header line: a JSON object with the following fields, some of which apply only to patches.
+The first line of a signed document or patch file MUST be a header line: a JSON object with the following fields, some of which apply only to patches. A file with no header line is invalid, even if the document it carries is empty.
+
+The header object MUST NOT contain duplicate keys, and consumers MUST reject a header that does. (JSON parsers disagree on which value wins for a repeated key, so allowing them would let two implementations read the same header differently.) This applies only to the header: data lines are hashed as bytes, so how their contents parse doesn't matter.
 
 | Field | Applies to | Description |
 |-------|-----------|-------------|
 | `sjsonl` | both | Marker and file type: `"doc"` for a signed document, `"patch"` for a patch |
-| `version` | both | Format version. Currently the only supported version is `"0.1"` |
+| `version` | both | Format version, as a string. Currently the only supported version is `"0.1"`. Consumers MUST reject a header whose version is missing or unsupported |
 | `key` | both | The Ed25519 public key, encoded as base64 |
 | `sig` | both | The Ed25519 signature, encoded as base64. For patches, this is the signature of the **patched** document, not of the patch itself |
 | `base` | patch only | The document hash of the base document, identifying the expected source of the patch |
@@ -148,8 +155,11 @@ An empty array is valid and deletes nothing (a pure-additions patch). A zero-len
 ### Applying a patch
 
 1. Verify that the `base` field matches the base document's hash.
-2. Remove every line from the base document whose hash matches an `rm` prefix.
+2. Remove every line from the base document whose hash matches an `rm` prefix. It is an error if any prefix matches no line.
 3. Add each of the patch's data lines to the set. All input rules apply to the result (no duplicates, etc.).
-4. Form the result document from the patch's `key` and `sig` as a `"doc"` header line plus the resulting line set, and verify its signature as described in [Signing](#signing).
+4. Verify that the `target` field matches the resulting line set's document hash.
+5. If the patch has `key` and `sig`, form the result document from them as a `"doc"` header line plus the resulting line set, and verify its signature as described in [Signing](#signing).
+
+If the patch has no `key` and `sig`, the result is the resulting line set with no header line: a plain JSON Lines document, not a signed one. Its integrity rests on the `target` check in step 4.
 
 Because the patch carries the signature of the target document, a successfully applied and verified patch yields a fully signed document. This doubles as patch verification, and is why the patch file itself is not signed.
