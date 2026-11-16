@@ -7,14 +7,26 @@ permalink: /specs/ratingset/
 
 # Ratingset Specification
 
-A **ratingset** is one person's ratings and reviews, published as a
-single [SJSONL](/specs/sjsonl/) document. It contains one **author
-line**, which identifies the author and declares their rating scale,
-and one **item line** for each movie (or other item) they've logged. An
-item line holds all of the author's **entries** for that item. An entry
-records one occasion, such as one viewing, with an optional date,
-rating, and review.
+A **ratingset** is one person's ratings and reviews, published as a single
+[SJSONL](/specs/sjsonl/) document. It is meant to be a standalone document that
+capture the author identity and all of the items and their ratings.
 
+### Structure
+
+A ratingset contains:
+
+- one **author line**, which identifies the author and declares their rating
+  scale
+- one **item line** for each movie (or other item) they've logged. An item line
+  holds all of the author's **entries** for that item. An entry records one
+  occasion, such as one viewing, with an optional date, rating, and review.
+
+### Item identification
+The items in the file are meant to be sufficiently self-descriptive such that
+referencing an external database isn't required. For example, items include a
+movie name and optionally year of release, and are thus human readable. But
+additional identifiers, such an an IMDb ID, may also be included to help
+consumers unamgiuously correlate items.
 
 ## Example
 
