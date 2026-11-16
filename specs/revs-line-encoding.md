@@ -9,8 +9,8 @@ permalink: /specs/revs-line-encoding/
 DRAFT FRAGMENT for issue #6. There is no revs spec page yet; this is the
 "Line encoding" section intended to be dropped into it. No front matter,
 so Jekyll copies it as a static file instead of publishing it as a page.
-Field lists reflect what the reference client emits today
-(revs.User2 / revs.Title2 / revs.Review2).
+Field order is lexicographic. The reference client emits this for the
+user line today; its title and review structs still need reordering.
 -->
 
 ## Line encoding
@@ -24,8 +24,7 @@ As in SJSONL, these rules are for generators only. Servers and consumers MUST ac
 Clients SHOULD encode every ratingset line as follows:
 
 - **Compact form**, with no insignificant whitespace.
-- **Field order is the schema order** listed below, not alphabetical. This matches what the reference client emits and lets lines read naturally (`type`, then `name`, then `year`, …).
-- **Objects with free-form keys** (`refs`) have their keys sorted lexicographically.
+- **Object keys are sorted lexicographically** at every nesting level: on the user line, title lines, reviews, and `refs`. This is the SJSONL default, needs no per-field table, and any JSON library can produce it.
 - **Absent optional fields are omitted**, not written as `null`, `""`, `[]`, or `{}`.
 - **Strings are UTF-8, escaping only what JSON requires.** Do not escape `<`, `>`, `&`, or non-ASCII characters. Go clients must use a `json.Encoder` with `SetEscapeHTML(false)` (and strip the trailing newline it adds) rather than `json.Marshal`.
 - **Strings are Unicode NFC-normalized.** This matters most for titles: `Amélie` typed with a precomposed `é` and with `e` plus a combining accent are different bytes, and therefore different lines.
@@ -34,13 +33,15 @@ Clients SHOULD encode every ratingset line as follows:
 
 ### Field order
 
+All keys are ASCII, so lexicographic order is plain byte order. For the fields defined today:
+
 | Line | Fields, in order |
 |------|------------------|
-| User line | `id`, `email`, `min_rating`, `max_rating`, `revision` |
-| Title line | `type`, `name`, `year`, `refs`, `reviews` |
-| Review (within `reviews`) | `date`, `rating`, `comment` |
+| User line | `id`, `max_rating`, `min_rating`, `revision` |
+| Title line | `name`, `refs`, `reviews`, `type`, `year` |
+| Review (within `reviews`) | `comment`, `date`, `rating` |
 
-Fields not in this table (from future schema versions or extensions) come after the listed ones, sorted lexicographically.
+Fields added by future schema versions or extensions are sorted in with the rest, not appended.
 
 ### Line structure
 
