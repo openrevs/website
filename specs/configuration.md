@@ -69,17 +69,20 @@ server:
   pull:                      # --pull URL (repeatable): upstream servers to
     - https://revs.example.com  # pull documents from (see Publishing)
   pull-interval: 15m         # --pull-interval: how often to pull them
+  log-requests: false        # --log-requests: see "Request logging" below
 
 client:
   data: /var/revs            # default ~/.revs/server
   listen: ":1324"
   demo: false
+  log-requests: false
 
 clientserver:
   data: /var/revs
   server-listen: ":1323"
   client-listen: ":1324"
   cut-interval: 30m
+  log-requests: false        # applies to both the server and the client
 
 tui:
   data: ~/.revs              # the same collection as `ui`
@@ -88,9 +91,34 @@ ui:
   data: ~/.revs              # holds revs.db
   listen: "127.0.0.1:1325"
   no-browser: false
+  log-requests: false
 ```
 
 Sections are independent: a key under `server:` never affects `tui`.
+
+## Request logging
+
+`server`, `client`, `clientserver` and `ui` accept `--log-requests`
+(`log-requests: true` in the config file). It is off by default. When
+it is on, every HTTP request the command serves gets one log line on
+stderr, written once the response is finished:
+
+```
+INFO request method=GET path=/v1/ status=200 bytes=117 duration=195µs remote=127.0.0.1:63814 user_agent=curl/8.7.1
+```
+
+| Field        | Meaning                                       |
+|--------------|-----------------------------------------------|
+| `method`     | HTTP method                                   |
+| `path`       | Request path, including any query string      |
+| `status`     | Response status code                          |
+| `bytes`      | Response body size in bytes                   |
+| `duration`   | Time spent serving the request                |
+| `remote`     | Client address as the server sees it          |
+| `user_agent` | The `User-Agent` header                       |
+
+Request and response bodies are never logged. Requests revs makes
+itself, such as pulls from upstream servers, are not logged.
 
 ## Data directories
 
