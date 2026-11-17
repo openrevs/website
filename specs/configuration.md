@@ -29,9 +29,9 @@ revs tui --data /tmp/t1     # then add the servers under "3 Servers"
 ## REVS_HOME
 
 `REVS_HOME` sets the root directory revs works from. It defaults to
-`~/.revs`. The `tui`, `ui` and `client` data directories default to
-`$REVS_HOME`, the `server` and `clientserver` data directories default
-to `$REVS_HOME/server`, and the user config file is read from
+`~/.revs`. The `tui` and `ui` data directories default to
+`$REVS_HOME`, the `server` data directory defaults to
+`$REVS_HOME/server`, and the user config file is read from
 `$REVS_HOME/config.yaml`. A `--data` flag or config value still
 overrides the default.
 
@@ -71,19 +71,6 @@ server:
   pull-interval: 15m         # --pull-interval: how often to pull them
   log-requests: false        # --log-requests: see "Request logging" below
 
-client:
-  data: /var/revs            # default ~/.revs/server
-  listen: ":1324"
-  demo: false
-  log-requests: false
-
-clientserver:
-  data: /var/revs
-  server-listen: ":1323"
-  client-listen: ":1324"
-  cut-interval: 30m
-  log-requests: false        # applies to both the server and the client
-
 tui:
   data: ~/.revs              # the same collection as `ui`
 
@@ -98,7 +85,7 @@ Sections are independent: a key under `server:` never affects `tui`.
 
 ## Request logging
 
-`server`, `client`, `clientserver` and `ui` accept `--log-requests`
+`server` and `ui` accept `--log-requests`
 (`log-requests: true` in the config file). It is off by default. When
 it is on, every HTTP request the command serves gets one log line on
 stderr, written once the response is finished:
@@ -123,10 +110,9 @@ itself, such as pulls from upstream servers, are not logged.
 ## Data directories
 
 `tui` and `ui` are two front ends to the same collection, kept in
-`~/.revs` (see [UI]({{ site.baseurl }}/specs/ui/)); they can run at the same time. The server commands
-(`server`, `client`, `clientserver`) default to `~/.revs/server`: the
-server's `revs.db` would otherwise collide with the UI's, and the
-directory also holds the server's identity (`server.key`), which signs
+`~/.revs` (see [UI]({{ site.baseurl }}/specs/ui/)); they can run at the same time. The server's
+data directory defaults to `~/.revs/server`: its `revs.db` would
+otherwise collide with the UI's, and the directory also holds the server's identity (`server.key`), which signs
 its manifests, and the published tree (`public/`); uploaded documents
 are kept in `revs.db`. Any data directory is created on first run; back
 up the server one to keep its identity.
