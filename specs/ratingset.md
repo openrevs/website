@@ -463,16 +463,6 @@ Use the catalogs' classification: if IMDb or TMDB lists something as a
 TV series (including a miniseries or limited series), it's a `tv`
 item. A TV movie is a `movie` item, even when it belongs to a series.
 
-### Notes for consumers
-
-- An item's ratings no longer all describe the same thing. A consumer
-  showing one rating for a `tv` item SHOULD use the latest
-  series-level entry, and fall back to its own summary of the season
-  entries (or none) when there isn't one. It MUST NOT present a season
-  or episode rating as the series' rating without saying so.
-- Two entries describe the same occasion only if they agree on
-  `season` and `episode` as well as `date`, `rating`, and `review`.
-
 ## Unknown fields
 
 Consumers MUST ignore fields they don't recognize on the author line,
