@@ -35,6 +35,7 @@ consumers unamgiuously correlate items.
 {"id":"601b27ee…","max_rating":10,"min_rating":0,"next":"9c4e1a07…","revision":4}
 {"entries":[{"date":"1997-07-07","rating":9,"review":"Great"},{"date":"2020-01-01","rating":8}],"refs":{"imdb":"tt0110912","tmdb":"680","wikidata":"Q104123"},"title":"Pulp Fiction","type":"movie","year":1994}
 {"entries":[{"rating":7}],"title":"Rocky","type":"movie","year":1976}
+{"entries":[{"date":"2015-03-01","rating":9,"season":1},{"date":"2016-04-10","rating":6,"season":2},{"date":"2019-06-02","rating":8,"review":"Uneven, but the highs are very high."}],"refs":{"imdb":"tt2802850","tmdb":"60622","wikidata":"Q15931555"},"title":"Fargo","type":"tv","year":2014}
 ```
 
 The first line is the SJSONL header, defined by the SJSONL spec. The
@@ -294,7 +295,7 @@ An item line describes one item and holds the author's entries for it.
 |-------|------|----------|---------|
 | `type` | string | yes | The kind of item, e.g. `"movie"`. |
 | `title` | string | yes | The item's title. |
-| `year` | integer | no | Year of release. |
+| `year` | integer | no | Year of release. For `tv`, the year the series first aired. |
 | `refs` | object of string → string | no | IDs of the item in other catalogs. |
 | `entries` | array of entry objects | no | The author's entries for the item. |
 
@@ -307,11 +308,18 @@ still use the rest of the document (see [Validation](#validation)).
 ### Type
 
 `type` says what kind of thing the item is. The rest of the item line
-depends on it: which `refs` keys apply, and what `year` means. The only
-value defined so far is `movie`. Consumers compare `type` without
-regard to case, and skip items whose type they don't support.
+depends on it: which `refs` keys apply, what `year` means, and which
+entry fields apply. The values defined so far are:
 
-`type` is required so that new kinds of item (TV series, books, games)
+| Value | Item |
+|-------|------|
+| `movie` | A film, including a TV movie. |
+| `tv` | A TV series, as a whole. See [TV series](#tv-series). |
+
+Consumers compare `type` without regard to case, and skip items whose
+type they don't support.
+
+`type` is required so that new kinds of item (books, games)
 can be added later without making existing documents ambiguous.
 
 ### Refs
@@ -326,6 +334,19 @@ title and year alone. Defined keys for `movie`:
 | `wikidata` | Wikidata item ID | `Q104123` |
 | `tmdb` | TMDB movie ID (numeric) | `680` |
 
+Defined keys for `tv`, all naming the series as a whole:
+
+| Key | Value | Example |
+|-----|-------|---------|
+| `imdb` | IMDb title ID of the series | `tt2802850` |
+| `wikidata` | Wikidata item ID of the series | `Q15931555` |
+| `tmdb` | TMDB TV series ID (numeric) | `60622` |
+
+A `tv` item's refs MUST name the series, never one of its seasons or
+episodes. IMDb gives episodes their own title IDs and Wikidata often
+has items for seasons, but those belong to the parts of the series,
+which entries identify by number instead (see [TV series](#tv-series)).
+
 Generators SHOULD emit keys in lowercase and values in the forms shown,
 and SHOULD include `imdb` when it's known. Consumers match keys without
 regard to case, and SHOULD accept common variants of the values: a URL,
@@ -334,7 +355,8 @@ Consumers ignore keys they don't know.
 
 A ref's meaning depends on the item's `type`. TMDB numbers movies and
 TV series separately, so the same number can name two different items.
-For a `movie` item, `tmdb` is always a movie ID. Consumers MUST
+For a `movie` item, `tmdb` is always a movie ID, and for a `tv` item
+it is always a TV series ID. Consumers MUST
 interpret refs according to the item's `type`, and MUST NOT match refs
 across items of different types.
 
@@ -372,6 +394,8 @@ one viewing of a movie.
 | `date` | string `YYYY-MM-DD` | no | When it happened. |
 | `rating` | integer | no | The rating, on the document's scale. |
 | `review` | string | no | The author's written review. |
+| `season` | integer ≥ 0 | no | `tv` only: the season the entry is about. |
+| `episode` | integer ≥ 1 | no | `tv` only: the episode, within `season`, the entry is about. |
 
 All fields are optional, so an entry can be a bare record that a
 viewing happened.
@@ -382,6 +406,11 @@ viewing happened.
   line containing an out-of-range rating is invalid.
 - A `date`, if present, MUST be a valid calendar date in `YYYY-MM-DD`
   form. An item line containing any other date is invalid.
+- `season` and `episode` are defined only for `tv` items. Generators
+  MUST NOT put them on entries of any other type. An entry with
+  `episode` MUST also have `season`. An item line breaking either rule,
+  or with a `season` or `episode` that isn't an integer in range, is
+  invalid.
 - The order of entries carries no meaning. Consumers sort entries by
   `date` themselves when they need an order. Generators order entries
   as described in [Line structure](#line-structure), which
@@ -395,6 +424,44 @@ review, render it as text.
 
 This spec sets no length limit on reviews. A review is limited only by
 the document's size. Consumers MAY truncate long reviews for display.
+
+## TV series
+
+A TV series is one item: one `tv` item line per series, holding every
+entry the author has for it. Seasons and episodes aren't items of
+their own. They have no stable IDs that work across catalogs (TMDB
+identifies a season only as a series ID plus a season number, and
+IMDb has no season IDs at all), while every catalog has an ID for the
+series. Keeping the series as the item means refs and
+[matching](#matching-items) work exactly as they do for movies.
+
+An entry says which part of the series it's about:
+
+| Entry has | It's about |
+|-----------|------------|
+| neither `season` nor `episode` | The series as a whole. |
+| `season` | That season. |
+| `season` and `episode` | That episode of that season. |
+
+Seasons and episodes are numbered as the catalogs number them, usually
+from 1. Season `0` holds specials, following TMDB and TheTVDB.
+Consumers that need to show a season or episode title look it up in a
+catalog using the series ref and the numbers.
+
+### Multiple viewings
+
+Each entry is still one occasion. Watching a season twice is two
+entries with the same `season`, each with its own date, rating, and
+review. A series-level entry is the author's view of the series as a
+whole, written whenever they like, and doesn't need a matching set of
+season entries. An author who rates only seasons, only the series, or
+a mix of both is writing a valid item.
+
+### Miniseries and specials
+
+Use the catalogs' classification: if IMDb or TMDB lists something as a
+TV series (including a miniseries or limited series), it's a `tv`
+item. A TV movie is a `movie` item, even when it belongs to a series.
 
 ## Unknown fields
 
@@ -443,7 +510,7 @@ the fields defined today:
 |------|------------------|
 | Author line | `id`, `max_rating`, `min_rating`, `next`, `previous`, `revision`, `status` |
 | Item line | `entries`, `refs`, `title`, `type`, `year` |
-| Entry | `date`, `rating`, `review` |
+| Entry | `date`, `episode`, `rating`, `review`, `season` |
 
 Fields added by future versions of this spec or by extensions are
 sorted in with the rest, not appended.
@@ -454,7 +521,8 @@ sorted in with the rest, not appended.
   inside its item line, so editing one entry changes only that item's
   line.
 - **Entries ordered oldest first**, with undated entries before dated
-  ones, and ties kept in the order they were entered.
+  ones, and ties kept in the order they were entered. For `tv` items
+  this means entries are ordered by date, not by season or episode.
 - **No volatile fields on item lines.** `revision` lives only on the
   author line, so a revision bump changes exactly one line. Generators
   SHOULD NOT add per-item timestamps or other values that change
@@ -544,3 +612,13 @@ the document is still used.
    document, author line included. Only root-signed revisions should be
    able to set `next`, `previous`, or `status`, and closing an ID should
    void every grant.
+6. **Season ranges.** An author who reviews "seasons 1–3" together
+   has to pick: one series-level entry, or the same review copied into
+   three season entries. A `seasons` range field would capture it
+   directly, at the cost of another way to say the same thing.
+7. **Episode entries.** `episode` is defined so episode reviews have a
+   place, but nothing uses it yet. If episode logging becomes common,
+   a series could gain hundreds of entries on one line, and editing
+   any of them rewrites that line. Splitting a series across lines
+   (per season, say) would need a rule for merging lines that share
+   refs.
