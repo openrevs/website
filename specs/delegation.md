@@ -203,7 +203,9 @@ A rogue or compromised delegate can:
 
 - Publish garbage ratings revisions until revoked (recoverable via a
   root cleanup revision).
-- Burn rev numbers (harmless beyond tiny patches).
+- Burn rev numbers. Without a bound this would freeze the document at
+  the largest rev; the ratingset spec's revision ceiling (seconds since
+  a fixed epoch) limits it to a short wait.
 
 It cannot:
 

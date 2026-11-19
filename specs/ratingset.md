@@ -32,7 +32,7 @@ consumers unamgiuously correlate items.
 
 ```
 {"sjsonl":"1","key":"…","sig":"…"}
-{"id":"601b27ee…","max_rating":10,"min_rating":0,"revision":4}
+{"id":"601b27ee…","max_rating":10,"min_rating":0,"next":"9c4e1a07…","revision":4}
 {"entries":[{"date":"1997-07-07","rating":9,"review":"Great"},{"date":"2020-01-01","rating":8}],"refs":{"imdb":"tt0110912","tmdb":"680","wikidata":"Q104123"},"title":"Pulp Fiction","type":"movie","year":1994}
 {"entries":[{"rating":7}],"title":"Rocky","type":"movie","year":1976}
 ```
@@ -77,6 +77,9 @@ though the [unknown fields](#unknown-fields) rule would let them.
 | `revision` | integer ≥ 1 | yes | The document's revision number. |
 | `min_rating` | integer | yes | Lowest value on the rating scale. |
 | `max_rating` | integer | yes | Highest value on the rating scale. |
+| `next` | string | no | The author ID of the successor key (see [Key status](#key-status)). |
+| `previous` | string | no | The author ID this author succeeds. |
+| `status` | string | no | `"retired"` or `"moved"`. Absent means active. |
 
 ### Author ID
 
@@ -90,14 +93,160 @@ under that ID.
 
 `revision` orders an author's documents. Each new document from an
 author MUST have a higher `revision` than every earlier one. Revisions
-don't need to be consecutive.
+don't need to be consecutive, but clients SHOULD use the next number
+after the author's latest revision.
 
 Servers reject a document whose `revision` is missing or less than 1,
 or not greater than the latest one they've accepted for that author.
+`revision` MUST be an integer from 1 to 2147483647 (2³¹ − 1), so it
+fits in a signed 32-bit integer. Servers and consumers MUST reject a
+document whose `revision` is outside that range, and MUST check this
+before any other check. An out-of-range value MUST NOT be wrapped,
+truncated, or rounded into range.
 
 Clients SHOULD assign a new revision only when content has changed.
 `revision` is the only field that changes when nothing else does, which
 is why it lives on the author line and not on item lines.
+
+### Revision ceiling
+
+The **revision ceiling** is the number of seconds since the revision
+epoch, 2026-01-01T00:00:00Z (Unix time 1767225600), plus 60:
+
+```
+ceiling = unix_time_seconds - 1767225600 + 60
+```
+
+Servers reject a document whose `revision` is greater than the
+ceiling. The epoch is fixed and never changes.
+
+Without a ceiling, anyone who can sign for an author (a thief, or a
+rogue delegate) could publish the largest possible revision and leave
+the author no higher number to use, freezing the document for good.
+With the ceiling, the highest revision anyone can reach is about "now".
+The author waits out the 60-second allowance and publishes above it.
+
+The ceiling doesn't affect normal use. Revisions that count up from 1
+stay far below it: the ceiling grows by about 31.5 million a year.
+Clients that want time-based revisions can use seconds since the
+revision epoch, as long as they publish at most one revision per
+second.
+
+Counting from 2026 keeps the ceiling within the 32-bit range of
+`revision` until 2094.
+
+The ceiling applies only when a document is accepted. Time only moves
+forward, so a revision that was under the ceiling when a server
+accepted it stays under it. Mirrors and consumers that receive the
+document later don't need to check it again. Servers need reasonably
+accurate clocks: a server whose clock runs far ahead would accept
+revisions that other servers reject.
+
+## Key status
+
+An author ID is bound to one key. This section covers what happens when
+an author stops using that key, either by choice or because the key is
+lost or stolen.
+
+There are two cases:
+
+- **Retirement.** The author is done. The current key closes the ID,
+  and nothing more is published under it.
+- **Rotation.** The author moves to a new key, and so to a new author
+  ID. Consumers can verify the link between the two IDs.
+
+Rotation works only if the author prepared for it in advance. A stolen
+key can sign anything the real author can, so once a key leaks it
+can't vouch for its own replacement. An author who didn't prepare can
+only retire.
+
+### Next key
+
+`next` commits to the author's successor key ahead of time. Its value
+is the author ID of a second keypair, written the same way as `id`.
+Because an ID is the hash of a public key, `next` reveals nothing about
+the successor key itself.
+
+- `next` MUST be 64 lowercase hex characters and MUST NOT equal `id`.
+- `next` may first appear in any revision. Once a server has accepted
+  a revision with `next`, every later revision MUST carry the same
+  `next`. A revision that changes or drops it is rejected.
+
+Because `next` can't change, someone who steals the current key can't
+redirect the succession to a key of their own. They could only do that
+by setting `next` first, which is why clients SHOULD set `next` in the
+author's first revision.
+
+Clients SHOULD generate the successor keypair when they create the
+author's key, and SHOULD keep the successor's private key offline
+(printed or in a separate backup), not next to the current key. A
+successor key stored with the current key is lost or stolen along with
+it.
+
+### Status
+
+`status` records that an ID is closed:
+
+| Value | Meaning |
+|-------|---------|
+| absent | Active. |
+| `retired` | The author has stopped publishing under this ID. |
+| `moved` | The author has moved to the ID in `next`. |
+
+- `moved` requires `next`.
+- Both values close the ID. After a `moved` revision, servers reject
+  any later revision of that ID. After a `retired` revision, servers
+  accept only a `moved` revision, and reject everything else.
+- A document whose `status` has any other value is invalid. `status`
+  controls whether an ID is still open, so consumers can't safely
+  ignore a value they don't know.
+
+A `retired` or `moved` revision still holds whatever item lines the
+author leaves in it. Closing an ID stops new revisions. It doesn't
+invalidate earlier ones.
+
+Someone who steals a key can retire the ID, but they can't reopen a
+retired ID and keep publishing. Even an author who didn't prepare can
+use this to cut off a thief, at the cost of the ID.
+
+`moved` is allowed after `retired` so that a thief can't block a move
+by retiring the ID first. This is safe because `next` can't change: a
+`moved` revision can only point to the successor the author committed
+to, so it doesn't matter who signs it.
+
+### Rotation
+
+The successor key performs a rotation by publishing a ratingset whose
+`id` is the predecessor's `next` and whose `previous` is the
+predecessor's `id`. The successor's document carries the author's
+ratings from then on.
+
+- `previous`, when set, MUST stay the same in every later revision of
+  the successor's ID.
+- The link is valid only if the predecessor's accepted `next` equals
+  the successor's `id`. A `previous` that doesn't check out is
+  meaningless, and consumers MUST NOT treat it as a link.
+- Once a valid successor document is accepted, the predecessor ID is
+  closed, the same as after a `moved` revision. This works whether or
+  not the predecessor was already retired or marked `moved`. A thief
+  who retires an ID can't block the successor.
+
+The old key isn't needed to rotate, so rotation works for lost keys as
+well as stolen ones. When the old key is still available, the author
+SHOULD first publish a final `moved` revision under it. Consumers who
+only have the old ID then learn about the move without searching for
+the successor's document.
+
+The successor's document SHOULD carry its own `next`, so that it can
+be rotated in turn.
+
+### Following a rotation
+
+A consumer that sees `status: moved` SHOULD look for the successor's
+documents under the ID in `next`. A consumer that sees `previous`
+SHOULD check the predecessor's `next` before treating the two IDs as
+one author. Whether to merge an author's history across IDs, and how
+to present it, is up to the consumer.
 
 ## Ratings
 
@@ -292,7 +441,7 @@ the fields defined today:
 
 | Line | Fields, in order |
 |------|------------------|
-| Author line | `id`, `max_rating`, `min_rating`, `revision` |
+| Author line | `id`, `max_rating`, `min_rating`, `next`, `previous`, `revision`, `status` |
 | Item line | `entries`, `refs`, `title`, `type`, `year` |
 | Entry | `date`, `rating`, `review` |
 
@@ -332,8 +481,26 @@ check fails:
    after applying it to its base).
 3. It has exactly one author line.
 4. The author line's `id` matches the signing key.
-5. `revision` is at least 1 and greater than the latest revision the
-   server has accepted for that author.
+5. `revision` is at least 1, greater than the latest revision the
+   server has accepted for that author, and no greater than the
+   [revision ceiling](#revision-ceiling).
+6. The author's ID is not closed (see [Key status](#key-status)): the
+   server hasn't accepted a `moved` revision or a valid successor
+   document for it. If the server has accepted a `retired` revision,
+   only a `moved` revision is accepted.
+7. If the server has accepted a revision with `next` for this author,
+   this revision has the same `next`. The same rule applies to
+   `previous`.
+8. `next` and `previous`, if present, are 64 lowercase hex characters
+   and differ from `id`. `status`, if present, is `retired` or `moved`,
+   and `moved` comes with `next`.
+9. If `previous` is present and the server holds the predecessor's
+   documents, the predecessor's `next` equals this document's `id`.
+   Accepting the document then closes the predecessor ID.
+
+Servers keep a closed ID's last accepted revision available as that
+author's current document, so consumers arriving later still find the
+final status.
 
 Servers SHOULD also reject an author line without a valid rating
 scale.
@@ -363,3 +530,17 @@ the document is still used.
    `"spoilers": true`) is the simplest form, and it doesn't commit the
    format to inline markup. Until it's defined, a client can add it as
    an extension field.
+3. **Successor without the predecessor.** A server that doesn't hold
+   the predecessor's documents can't check `previous` (check 9). Should
+   it reject the document, or accept it and leave the link for
+   consumers to verify? Accepting is friendlier to federation, but the
+   server then can't close the predecessor ID.
+4. **Disavowing stolen revisions.** After a theft, revisions published
+   by the thief stay valid under the old ID. The successor key could be
+   allowed to mark predecessor revisions above some number as not the
+   author's. That needs trusted acceptance times, like the delegation
+   draft's, and is left for later.
+5. **Delegation.** If delegation is added, delegates sign the whole
+   document, author line included. Only root-signed revisions should be
+   able to set `next`, `previous`, or `status`, and closing an ID should
+   void every grant.
