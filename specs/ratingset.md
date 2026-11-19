@@ -235,7 +235,7 @@ viewing happened.
   form. An item line containing any other date is invalid.
 - The order of entries carries no meaning. Consumers sort entries by
   `date` themselves when they need an order. Generators order entries
-  as described in [Line encoding](/specs/revs-line-encoding/), which
+  as described in [Line structure](#line-structure), which
   keeps the line's bytes the same from revision to revision.
 
 ### Reviews
@@ -253,12 +253,72 @@ Consumers MUST ignore fields they don't recognize on the author line,
 item lines, and entries. Future versions of this spec and application
 extensions may add fields.
 
-## Encoding
+## Line encoding
 
-A ratingset's line encoding (field order, escaping, normalization) is
-specified in [Line encoding](/specs/revs-line-encoding/). Those rules
-apply only to generators. Consumers and servers MUST accept any line
-that is valid under this spec, and MUST NOT re-encode lines.
+All of the SJSONL [line encoding
+recommendations](/specs/sjsonl/#line-encoding-recommendations) apply
+to a ratingset. This section narrows them, so that independent
+generators encoding the same data produce the same bytes.
+
+As in SJSONL, these rules are for generators only. Servers and
+consumers MUST accept any line that is valid under this spec, and MUST
+NOT re-encode lines before hashing, storing, or republishing them.
+
+### Encoding rules
+
+Generators SHOULD encode every line as follows:
+
+- **Compact form**, with no insignificant whitespace.
+- **Object keys sorted lexicographically** at every nesting level: on
+  the author line, item lines, entries, and `refs`. This is the SJSONL
+  default, needs no per-field table, and any JSON library can produce
+  it.
+- **Absent optional fields omitted**, not written as `null`, `""`,
+  `[]`, or `{}`.
+- **Strings in UTF-8, escaping only what JSON requires.** Don't escape
+  `<`, `>`, `&`, or non-ASCII characters. In Go, this means a
+  `json.Encoder` with `SetEscapeHTML(false)` (stripping the trailing
+  newline it adds) rather than `json.Marshal`.
+- **Strings Unicode NFC-normalized.** This matters most for `title`:
+  `Amélie` typed with a precomposed `é` and with `e` plus a combining
+  accent are different bytes, and so different lines.
+- **Dates** as `YYYY-MM-DD`.
+- **Numbers** as plain decimal integers.
+
+### Field order
+
+All keys are ASCII, so lexicographic order is plain byte order. For
+the fields defined today:
+
+| Line | Fields, in order |
+|------|------------------|
+| Author line | `id`, `max_rating`, `min_rating`, `revision` |
+| Item line | `entries`, `refs`, `title`, `type`, `year` |
+| Entry | `date`, `rating`, `review` |
+
+Fields added by future versions of this spec or by extensions are
+sorted in with the rest, not appended.
+
+### Line structure
+
+- **One author line, one line per item.** An item's entries live
+  inside its item line, so editing one entry changes only that item's
+  line.
+- **Entries ordered oldest first**, with undated entries before dated
+  ones, and ties kept in the order they were entered.
+- **No volatile fields on item lines.** `revision` lives only on the
+  author line, so a revision bump changes exactly one line. Generators
+  SHOULD NOT add per-item timestamps or other values that change
+  without the underlying rating changing.
+- **Byte-identical duplicate item lines dropped** before signing.
+  SJSONL forbids them, and they carry no information.
+
+These rules keep unchanged items byte-identical across an author's
+revisions, which is where nearly all of the patch-size and storage
+benefit comes from. Sharing lines *between* authors is limited by
+design: an item line carries that author's entries, so two authors'
+lines match only when their entries for an item are identical (or
+both are absent).
 
 ## Validation
 
@@ -294,10 +354,10 @@ the document is still used.
 
 ## Open questions
 
-1. **HTML escaping.** The line encoding draft says not to escape `<`,
-   `>`, and `&`, but the client encodes with `json.Marshal`, which
-   escapes them. Fix the client (`SetEscapeHTML(false)`) or relax the
-   draft.
+1. **HTML escaping.** [Encoding rules](#encoding-rules) says not to
+   escape `<`, `>`, and `&`, but the client encodes with
+   `json.Marshal`, which escapes them. Fix the client
+   (`SetEscapeHTML(false)`) or relax the rule.
 2. **Spoilers.** Should an entry be able to mark its review as
    containing spoilers? An optional boolean on the entry (say
    `"spoilers": true`) is the simplest form, and it doesn't commit the
