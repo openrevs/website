@@ -7,22 +7,28 @@ permalink: /specs/ui/
 
 # revs ui and revs tui
 
-`revs ui` runs a local, single-user website for managing your movie
-collection and publishing it to openrevs servers. It opens your browser
+`revs ui` runs a local, single-user website for managing your
+collection of movies and TV series and publishing it to openrevs
+servers. It opens your browser
 at http://localhost:1325/ (use `--no-browser` to skip that, and
 `--listen` to change the address).
 
 `revs tui` is the same thing in the terminal: the same data and
-features, organized under five tabs (1 Movies, 2 History, 3 Servers,
+features, organized under five tabs (1 Movies & TV, 2 History, 3 Servers,
 4 Identity, 5 Data). Each screen lists its keys at the bottom; esc
 goes back. Both can run at once on the same data directory.
 
 ## What it does
 
-- **Movies**: title, year, and optional Wikidata, IMDb, and TMDB IDs,
-  with links out to those sites. To fill in accurate details and IDs,
-  search Wikidata from "Add a movie" or a movie's edit page. Nothing
-  else is fetched or stored from those services.
+- **Movies and TV series**: each is a movie or a TV series, with a
+  title, year (for a series, the year it first aired), and optional
+  Wikidata, IMDb, and TMDB IDs, with links out to those sites. A
+  series's IDs are the series's own, never a season's or episode's.
+  To fill in accurate details and IDs, search Wikidata from "Add a
+  movie or series" or an item's edit page; results are marked as
+  movies or TV series. Nothing else is fetched or stored from those
+  services. The list shows both, and filters to movies or TV series
+  (t in the TUI).
 - **Ratings and viewings**: ratings are ½ to 5 stars. Rate a movie
   in one step: click the stars in the movie list, on a movie's page,
   or on a search result under "Add a movie" (which adds and rates it
@@ -37,12 +43,19 @@ goes back. Both can run at once on the same data directory.
   adds another viewing,
   each with its own date, rating, and review; the movie list shows
   the latest, with a ×N count when there's more than one.
+- **TV series**: a series's viewings can name a season, or a season
+  and episode (season 0 is specials); with neither, a viewing is about
+  the whole series. The series's rating is its latest whole-series
+  viewing's: the star bar and r set that one, adding it dated today if
+  there is none, and leave season and episode viewings alone. A series
+  with season or episode viewings can't be changed into a movie until
+  they're edited or deleted.
 - **Identity**: generate an Ed25519 key, or import one (for example
   from `revs keygen`). The key signs everything you publish.
 - **Servers**: add openrevs servers, push your collection to them, and
   pull everyone's published reviews from them. Pulled reviews show
-  under "Others' reviews" on matching movies, and per user on the
-  server page.
+  under "Others' reviews" on matching movies and series (with their
+  season and episode), and per user on the server page.
 - **Import/Export**: save your collection as a signed sjsonl
   ratingset, or merge in a ratingset file (signed, or unsigned JSON
   lines).
@@ -65,7 +78,9 @@ it, keeping whatever another server also holds.
 ## Publishing
 
 A push sends your whole collection as one signed document: one line
-per movie, with its viewings as reviews. IDs go under `refs` as
+per movie or TV series (types `movie` and `tv`), with its viewings as
+entries, and a series's seasons and episodes as each entry's `season`
+and `episode`. IDs go under `refs` as
 `imdb`, `tmdb`, and `wikidata`. The client asserts the revision and
 only bumps it when content has changed.
 
@@ -81,9 +96,11 @@ is reported as a conflict, and pushing again stays one until the
 server's next epoch publishes it. You can wait and push again, or push
 anyway and overwrite the server's copy.
 
-Merging never deletes or overwrites anything. Movies match by
-Wikidata, IMDb, or TMDB ID, otherwise by title and year. A viewing is
-added unless an identical one (same date, rating, and text) exists.
+Merging never deletes or overwrites anything. Items match only items
+of the same type, by Wikidata, IMDb, or TMDB ID, otherwise by title
+and year: a movie never matches a series. A viewing is added unless an
+identical one (same date, rating, text, season, and episode) exists.
+Items of other types are skipped.
 
 ## Security
 
