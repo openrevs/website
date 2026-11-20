@@ -61,9 +61,14 @@ goes back. Both can run at once on the same data directory.
 - **Identity**: generate an Ed25519 key, or import one (for example
   from `revs keygen`). The key signs everything you publish.
 - **Servers**: add openrevs servers, push your collection to them, and
-  pull everyone's published reviews from them. Pulled reviews show
-  under "Others' reviews" on matching movies and series (with their
-  season and episode), and per user on the server page.
+  pull everyone's published reviews from them. Adding a server fetches
+  its `index.json` first, so a wrong address is refused. The server
+  page shows what the index says (server ID and key, and per channel
+  the current epoch, when it was last published, how often it
+  publishes, and its snapshots and patches), refreshed on every pull.
+  Pulled reviews show under "Others' reviews" on matching movies and
+  series (with their season and episode), and per user on the server
+  page.
 - **Import/Export**: save your collection as a signed sjsonl
   ratingset, or merge in a ratingset file (signed, or unsigned JSON
   lines).
