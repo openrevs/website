@@ -70,6 +70,8 @@ server:
     - https://revs.example.com  # pull documents from (see Publishing)
   pull-interval: 15m         # --pull-interval: how often to pull them
   log-requests: false        # --log-requests: see "Request logging" below
+  admin-listen: "127.0.0.1:1324"  # --admin-listen: serve the admin UI here;
+                             # off by default (see "Server admin UI" below)
 
 tui:
   data: ~/.revs              # the same collection as `ui`
@@ -106,6 +108,36 @@ INFO request method=GET path=/v1/ status=200 bytes=117 duration=195µs remote=12
 
 Request and response bodies are never logged. Requests revs makes
 itself, such as pulls from upstream servers, are not logged.
+
+## Server admin UI
+
+`revs server --admin-listen ADDR` serves a web UI for the server's
+operator on a second address, separate from the public one so it can be
+kept private (bind it to `127.0.0.1`, or a private network, and reach it
+through a tunnel or an authenticating proxy). It is off unless
+`admin-listen` is set.
+
+The UI has one password, read from the `REVS_ADMIN_PASSWORD`
+environment variable; there is no flag or config key for it, so it
+stays out of process listings and config files. The server refuses to
+start with `--admin-listen` but no password. Logging in gives a session
+cookie good for 12 hours, or until the server restarts or you log out.
+
+Failed logins are rate limited across all clients together, not per
+address (behind a proxy every client has the same address): five may
+fail at once, then one more every 12 seconds. While the limit is
+reached, every login, right password or not, is refused with `429` and
+a `Retry-After` header, so the limit also bounds guessing. Failed logins
+are logged with the client's address.
+
+For now the UI shows the server's state: its ID and uptime; how many
+users it holds a document for, split into those uploaded directly and
+those pulled from upstreams; how many document revisions it has
+accepted and the total size of the latest ones; each channel's latest
+epoch, member count and cut time; and each upstream's last pull, its
+result, and the documents accepted from it since startup. With
+JavaScript, the page keeps itself current over a Datastar stream,
+checking every few seconds; without it, reload the page.
 
 ## Data directories
 
