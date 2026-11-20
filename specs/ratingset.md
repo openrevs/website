@@ -391,7 +391,7 @@ one viewing of a movie.
 
 | Field | Type | Required | Meaning |
 |-------|------|----------|---------|
-| `date` | string `YYYY-MM-DD` | no | When it happened. |
+| `date` | string `YYYY-MM-DD`, `YYYY-MM`, or `YYYY` | no | When it happened, to the day, month, or year. |
 | `rating` | integer | no | The rating, on the document's scale. |
 | `review` | string | no | The author's written review. |
 | `season` | integer ≥ 0 | no | `tv` only: the season the entry is about. |
@@ -405,7 +405,16 @@ viewing happened.
 - A `rating`, if present, MUST be within the declared scale. An item
   line containing an out-of-range rating is invalid.
 - A `date`, if present, MUST be a valid calendar date in `YYYY-MM-DD`
-  form. An item line containing any other date is invalid.
+  form, or, when the author doesn't know the day, a valid month in
+  `YYYY-MM` form or a year in `YYYY` form. An item line containing any
+  other date is invalid. A partial date means some time within that
+  month or year; it isn't the first of it. Generators MUST NOT invent
+  precision they don't have (such as writing `2019-05-01` for "May
+  2019"), and SHOULD leave `date` out rather than guess one (such as
+  the day a rating was recorded) when nothing says when it happened.
+- Dates in these forms compare correctly as strings: a partial date
+  sorts just before the more precise dates within it (`2019` <
+  `2019-05` < `2019-05-04`).
 - `season` and `episode` are defined only for `tv` items. Generators
   MUST NOT put them on entries of any other type. An entry with
   `episode` MUST also have `season`. An item line breaking either rule,
@@ -498,7 +507,8 @@ Generators SHOULD encode every line as follows:
 - **Strings Unicode NFC-normalized.** This matters most for `title`:
   `Amélie` typed with a precomposed `é` and with `e` plus a combining
   accent are different bytes, and so different lines.
-- **Dates** as `YYYY-MM-DD`.
+- **Dates** as `YYYY-MM-DD`, `YYYY-MM`, or `YYYY`, with zero-padded
+  months and days, and no more precise than what is known.
 - **Numbers** as plain decimal integers.
 
 ### Field order
@@ -520,8 +530,9 @@ sorted in with the rest, not appended.
 - **One author line, one line per item.** An item's entries live
   inside its item line, so editing one entry changes only that item's
   line.
-- **Entries ordered oldest first**, with undated entries before dated
-  ones, and ties kept in the order they were entered. For `tv` items
+- **Entries ordered oldest first**, by `date` compared as a string (so
+  `2019` before `2019-05` before `2019-05-04`), with undated entries
+  before dated ones, and ties kept in the order they were entered. For `tv` items
   this means entries are ordered by date, not by season or episode.
 - **No volatile fields on item lines.** `revision` lives only on the
   author line, so a revision bump changes exactly one line. Generators

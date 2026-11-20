@@ -37,16 +37,24 @@ goes back. Both can run at once on the same data directory.
   deleting them. In the TUI,
   press r to type a rating or +/- to nudge it by half a star; adding a
   movie asks for its rating straight away. Rating an unrated movie
-  records a viewing dated today; rating it again changes the latest
+  records an undated viewing (a rating alone doesn't say when you
+  watched it); rating it again changes the latest
   viewing's rating. A viewing also has an optional review. Most
   movies have just one, shown as "Your review". Watching it again
   adds another viewing,
   each with its own date, rating, and review; the movie list shows
   the latest, with a ×N count when there's more than one.
+- **Dates**: a viewing's date is optional, and may be just a month
+  (`YYYY-MM`) or a year (`YYYY`) when that's all you remember. New
+  viewings start undated (the web UI has a Today button), and clearing
+  the date makes a viewing undated again. History lists viewings by
+  date watched, undated ones last; the web UI's "Recently added" view
+  lists them by when they were added to the collection, which is how
+  to find undated ones in order.
 - **TV series**: a series's viewings can name a season, or a season
   and episode (season 0 is specials); with neither, a viewing is about
   the whole series. The series's rating is its latest whole-series
-  viewing's: the star bar and r set that one, adding it dated today if
+  viewing's: the star bar and r set that one, adding an undated one if
   there is none, and leave season and episode viewings alone. A series
   with season or episode viewings can't be changed into a movie until
   they're edited or deleted.
