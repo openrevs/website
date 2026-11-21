@@ -1,3 +1,9 @@
+> [!NOTE]
+> Moved to the revs repo, at least for now: https://github.com/openrevs/revs/tree/main/site
+>
+> tbd where the final home will be.
+
+
 # OpenRevs website
 
 Live at https://openrevs.org. Published with GitHub Pages (deploy from `main`);
